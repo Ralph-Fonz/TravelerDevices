@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LocalStorage Test</title>
+</head>
+<body>
+    <h1>LocalStorage Test</h1>
+    <div>
+        <h2>Brands</h2>
+        <div id="brands"></div>
+        <button onclick="addTestBrand()">Add Test Brand</button>
+        <button onclick="clearBrands()">Clear Brands</button>
+    </div>
+    <div>
+        <h2>Categories</h2>
+        <div id="categories"></div>
+        <button onclick="addTestCategory()">Add Test Category</button>
+        <button onclick="clearCategories()">Clear Categories</button>
+    </div>
+    
+    <script>
+        function displayStorage() {
+            const brands = JSON.parse(localStorage.getItem('brands') || '[]');
+            const categories = JSON.parse(localStorage.getItem('categories') || '[]');
+            
+            document.getElementById('brands').innerHTML = '<pre>' + JSON.stringify(brands, null, 2) + '</pre>';
+            document.getElementById('categories').innerHTML = '<pre>' + JSON.stringify(categories, null, 2) + '</pre>';
+        }
+        
+        function addTestBrand() {
+            const brands = JSON.parse(localStorage.getItem('brands') || '[]');
+            brands.push('Test Brand ' + Date.now());
+            localStorage.setItem('brands', JSON.stringify(brands));
+            displayStorage();
+        }
+        
+        function clearBrands() {
+            localStorage.removeItem('brands');
+            displayStorage();
+        }
+        
+        function addTestCategory() {
+            const categories = JSON.parse(localStorage.getItem('categories') || '[]');
+            categories.push('Test Category ' + Date.now());
+            localStorage.setItem('categories', JSON.stringify(categories));
+            displayStorage();
+        }
+        
+        function clearCategories() {
+            localStorage.removeItem('categories');
+            displayStorage();
+        }
+        
+        displayStorage();
+        setInterval(displayStorage, 1000);
+    </script>
+</body>
+</html>

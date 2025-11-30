@@ -1,0 +1,293 @@
+@page
+@model TravelerDevices_Web.Pages.BluetoothScannerModel
+@{
+    ViewData["Title"] = "Bluetooth Device Scanner";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4"><i class="fas fa-bluetooth-b text-primary"></i> Bluetooth Device Scanner</h1>
+            <p class="lead">Scan, manage, and monitor your Bluetooth devices</p>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <button id="scanBtn" class="btn btn-primary btn-lg">
+                        <i class="fas fa-search"></i> Scan for Devices
+                    </button>
+                    <button id="clearStorageBtn" class="btn btn-danger ms-2">
+                        <i class="fas fa-trash"></i> Clear Storage
+                    </button>
+                    <button id="checkCompatibilityBtn" class="btn btn-info ms-2">
+                        <i class="fas fa-check-circle"></i> Check Compatibility
+                    </button>
+                    <span id="bluetoothStatus" class="ms-3 badge bg-secondary">
+                        <i class="fas fa-info-circle"></i> Ready
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Device List -->
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Saved Devices</h5>
+                </div>
+                <div class="card-body">
+                    <div id="deviceList" class="list-group">
+                        <!-- Devices will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Real-time Monitoring Graph -->
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line"></i> DC-DC Monitoring
+                        <button id="clearGraphBtn" class="btn btn-sm btn-outline-light float-end">
+                            <i class="fas fa-eraser"></i> Clear
+                        </button>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <h6><i class="fas fa-bolt"></i> Voltage (V)</h6>
+                            <canvas id="voltageChart" height="80"></canvas>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <h6><i class="fas fa-plug"></i> Current (A)</h6>
+                            <canvas id="currentChart" height="80"></canvas>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <h6><i class="fas fa-fire"></i> Power (W)</h6>
+                            <canvas id="powerChart" height="80"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Readings -->
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <small class="text-muted">Auxiliary Battery</small>
+                                    <h4 id="auxVoltage" class="mb-0 text-primary">--.-V</h4>
+                                    <small id="auxCurrent" class="text-muted">--.-A</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <small class="text-muted">Starter Battery</small>
+                                    <h4 id="starterVoltage" class="mb-0 text-success">--.-V</h4>
+                                    <small id="starterCurrent" class="text-muted">--.-A</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Heater Control Section -->
+    <div class="row">
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-fire"></i> Diesel Heater Control
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Control Buttons -->
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-sliders-h"></i> Control</h6>
+                            <div class="d-grid gap-2">
+                                <button id="heaterOnBtn" class="btn btn-success">
+                                    <i class="fas fa-power-off"></i> Heater ON
+                                </button>
+                                <button id="heaterOffBtn" class="btn btn-secondary">
+                                    <i class="fas fa-power-off"></i> Heater OFF
+                                </button>
+                                <button id="blowerOnBtn" class="btn btn-info">
+                                    <i class="fas fa-fan"></i> Blower ON
+                                </button>
+                                <button id="blowerOffBtn" class="btn btn-outline-info">
+                                    <i class="fas fa-fan"></i> Blower OFF
+                                </button>
+                                <button id="heaterPrimeBtn" class="btn btn-warning">
+                                    <i class="fas fa-droplet"></i> Prime Fuel
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Heater Level / Temperature -->
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-temperature-high"></i> Heat Level / Temperature</h6>
+                            <div class="btn-group-vertical w-100" role="group">
+                                <button id="heaterLevel1Btn" class="btn btn-outline-danger">
+                                    <i class="fas fa-fire"></i> Level 1 (Low)
+                                </button>
+                                <button id="heaterLevel2Btn" class="btn btn-outline-danger">
+                                    <i class="fas fa-fire"></i> Level 2 (Medium)
+                                </button>
+                                <button id="heaterLevel3Btn" class="btn btn-outline-danger">
+                                    <i class="fas fa-fire"></i> Level 3 (High)
+                                </button>
+                            </div>
+                            <div class="mt-3">
+                                <label for="heaterTempInput" class="form-label">Temperature (°C)</label>
+                                <div class="input-group">
+                                    <input type="number" id="heaterTempInput" class="form-control" min="8" max="35" value="20" placeholder="8-35°C">
+                                    <button id="heaterSetTempBtn" class="btn btn-primary">
+                                        <i class="fas fa-check"></i> Set
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Display -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6><i class="fas fa-info-circle"></i> Heater Status</h6>
+                                    <div class="row">
+                                        <div class="col-md-3 text-center">
+                                            <small class="text-muted">Power</small>
+                                            <h5 id="heaterPowerStatus" class="mb-0 text-secondary">OFF</h5>
+                                        </div>
+                                        <div class="col-md-3 text-center">
+                                            <small class="text-muted">Current Level</small>
+                                            <h5 id="heaterCurrentLevel" class="mb-0 text-info">--</h5>
+                                        </div>
+                                        <div class="col-md-3 text-center">
+                                            <small class="text-muted">Set Temperature</small>
+                                            <h5 id="heaterSetTemp" class="mb-0 text-primary">--°C</h5>
+                                        </div>
+                                        <div class="col-md-3 text-center">
+                                            <small class="text-muted">Current Temp</small>
+                                            <h5 id="heaterCurrentTemp" class="mb-0 text-warning">--°C</h5>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Protocol Diagnostic Tool -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0"><i class="fas fa-tools"></i> Protocol Diagnostic Tool</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <label for="customHexInput" class="form-label">Custom Hex Command (space-separated)</label>
+                                            <input type="text" id="customHexInput" class="form-control font-monospace" placeholder="e.g. 76 16 01 00 or AA 55 01">
+                                        </div>
+                                        <div class="col-md-4 d-flex align-items-end">
+                                            <button id="sendCustomHexBtn" class="btn btn-warning w-100">
+                                                <i class="fas fa-paper-plane"></i> Send Custom
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            <strong>Quick Test Patterns:</strong><br>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='76 16 01 00'">76 16 01 00</button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='76 16 00 00'">76 16 00 00</button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='AA 55 01'">AA 55 01</button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='AA 55 00'">AA 55 00</button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='78 78 11 01 0D 0A'">78 78 11 01</button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='01'">01</button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='00'">00</button>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Console Section -->
+    <div class="row">
+        <!-- Scan Console -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-terminal"></i> Scan Console
+                        <div class="float-end">
+                            <button id="copyScanConsoleBtn" class="btn btn-sm btn-outline-light me-1">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button id="clearScanConsoleBtn" class="btn btn-sm btn-outline-light">
+                                <i class="fas fa-eraser"></i> Clear
+                            </button>
+                        </div>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="scanConsole" class="console bg-dark text-light p-3" style="height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem;">
+                        <div class="text-success">Ready to scan...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Console -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plug"></i> Connection Console
+                        <div class="float-end">
+                            <button id="copyConnectionConsoleBtn" class="btn btn-sm btn-outline-light me-1">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button id="clearConnectionConsoleBtn" class="btn btn-sm btn-outline-light">
+                                <i class="fas fa-eraser"></i> Clear
+                            </button>
+                        </div>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="connectionConsole" class="console bg-dark text-light p-3" style="height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem;">
+                        <div class="text-info">Waiting for connection...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <script src="~/js/bluetooth-scanner.js" asp-append-version="true"></script>
+}

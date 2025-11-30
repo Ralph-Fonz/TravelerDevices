@@ -1,0 +1,104 @@
+@page
+@model TravelerDevices_Web.Pages.DeviceSettingsModel
+@{
+    ViewData["Title"] = "Device Settings";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4"><i class="fas fa-cog"></i> Device Settings</h1>
+            <p class="lead">Configure your Bluetooth devices</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Devices</h5>
+                </div>
+                <div class="card-body">
+                    <div id="deviceList" class="list-group">
+                        <!-- Devices will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-edit"></i> Edit Device</h5>
+                </div>
+                <div class="card-body">
+                    <div id="deviceSettings">
+                        <p class="text-muted text-center py-5">
+                            <i class="fas fa-hand-pointer fa-3x mb-3"></i><br>
+                            Select a device to edit settings
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Device Settings Template -->
+<template id="deviceSettingsTemplate">
+    <form id="deviceSettingsForm">
+        <div class="mb-3">
+            <label class="form-label fw-bold">
+                <i class="fas fa-signature"></i> Custom Name
+            </label>
+            <input type="text" class="form-control" id="deviceCustomName" placeholder="Enter custom name">
+            <small class="form-text text-muted">
+                Original BT Name: <span id="deviceOriginalName" class="fw-bold"></span>
+            </small>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">
+                <i class="fas fa-copyright"></i> Brand
+            </label>
+            <select class="form-select" id="deviceBrand">
+                <option value="">Select Brand...</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">
+                <i class="fas fa-layer-group"></i> Category
+            </label>
+            <select class="form-select" id="deviceCategory">
+                <option value="">Select Category...</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">
+                <i class="fas fa-info-circle"></i> Device Info
+            </label>
+            <div class="card bg-light">
+                <div class="card-body">
+                    <p class="mb-1"><strong>BT Address:</strong> <span id="deviceId"></span></p>
+                    <p class="mb-1"><strong>Status:</strong> <span id="deviceStatus" class="badge bg-secondary"></span></p>
+                    <p class="mb-0"><strong>Last Seen:</strong> <span id="deviceLastSeen"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+            <button type="button" id="deleteDeviceBtn" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Delete Device
+            </button>
+        </div>
+    </form>
+</template>
+
+@section Scripts {
+    <script src="~/js/device-settings.js" asp-append-version="true"></script>
+}

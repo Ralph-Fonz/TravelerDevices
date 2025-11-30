@@ -1,0 +1,58 @@
+@page
+@model TravelerDevices_Web.Pages.BrandManagementModel
+@{
+    ViewData["Title"] = "Brand & Category Management";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4"><i class="fas fa-tags"></i> Brand & Category Management</h1>
+            <p class="lead">Manage brands and categories for your devices</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-copyright"></i> Brands</h5>
+                </div>
+                <div class="card-body">
+                    <ul id="brandList" class="list-group mb-3">
+                        <!-- Brands will be listed here -->
+                    </ul>
+                    <div class="input-group">
+                        <input type="text" id="newBrandInput" class="form-control" placeholder="Add new brand">
+                        <button id="addBrandBtn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-layer-group"></i> Categories</h5>
+                </div>
+                <div class="card-body">
+                    <ul id="categoryList" class="list-group mb-3">
+                        <!-- Categories will be listed here -->
+                    </ul>
+                    <div class="input-group">
+                        <input type="text" id="newCategoryInput" class="form-control" placeholder="Add new category">
+                        <button id="addCategoryBtn" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/brand-management.js" asp-append-version="true"></script>
+}
