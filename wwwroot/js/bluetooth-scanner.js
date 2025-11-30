@@ -16,6 +16,7 @@ class BluetoothDeviceManager {
         this.deviceList = document.getElementById('deviceList');
         this.scanConsole = document.getElementById('scanConsole');
         this.connectionConsole = document.getElementById('connectionConsole');
+        this.snifferConsole = document.getElementById('snifferConsole');
         this.bluetoothStatus = document.getElementById('bluetoothStatus');
         
         // Console controls
@@ -25,10 +26,14 @@ class BluetoothDeviceManager {
         this.copyConnectionConsoleBtn = document.getElementById('copyConnectionConsoleBtn');
         this.checkCompatibilityBtn = document.getElementById('checkCompatibilityBtn');
         this.clearGraphBtn = document.getElementById('clearGraphBtn');
+        this.snifferEnableBtn = document.getElementById('snifferEnableBtn');
+        this.snifferDisableBtn = document.getElementById('snifferDisableBtn');
+        this.clearSnifferBtn = document.getElementById('clearSnifferBtn');
         
         // Heater controls
         this.heaterOnBtn = document.getElementById('heaterOnBtn');
         this.heaterOffBtn = document.getElementById('heaterOffBtn');
+        this.requestStatusBtn = document.getElementById('requestStatusBtn');
         this.blowerOnBtn = document.getElementById('blowerOnBtn');
         this.blowerOffBtn = document.getElementById('blowerOffBtn');
         this.heaterPrimeBtn = document.getElementById('heaterPrimeBtn');
@@ -40,10 +45,21 @@ class BluetoothDeviceManager {
         this.customHexInput = document.getElementById('customHexInput');
         this.sendCustomHexBtn = document.getElementById('sendCustomHexBtn');
         
+        // Protocol learning controls
+        this.learnCommandName = document.getElementById('learnCommandName');
+        this.learnCommandHex = document.getElementById('learnCommandHex');
+        this.saveLearnedCommandBtn = document.getElementById('saveLearnedCommandBtn');
+        this.testLearnedCommandBtn = document.getElementById('testLearnedCommandBtn');
+        this.clearLearnedCommandsBtn = document.getElementById('clearLearnedCommandsBtn');
+        this.learnedCommandsList = document.getElementById('learnedCommandsList');
+        this.selectedLearnedCommand = null;
+        
         // Active device and connection
         this.selectedDevice = null;
         this.activeConnection = null;
         this.heaterCharacteristic = null; // For heater write characteristic
+        this.snifferEnabled = false;
+        this.snifferCharacteristics = []; // Track all notify characteristics for sniffing
         
         // Monitoring data
         this.monitoringData = {
@@ -113,18 +129,60 @@ class BluetoothDeviceManager {
         this.copyScanConsoleBtn.addEventListener('click', () => this.copyScanConsole());
         this.copyConnectionConsoleBtn.addEventListener('click', () => this.copyConnectionConsole());
         this.clearGraphBtn.addEventListener('click', () => this.clearGraphData());
+        this.snifferEnableBtn.addEventListener('click', () => this.enableSniffer());
+        this.snifferDisableBtn.addEventListener('click', () => this.disableSniffer());
+        this.clearSnifferBtn.addEventListener('click', () => this.clearSniffer());
         
-        // Heater control event listeners
-        this.heaterOnBtn.addEventListener('click', () => this.sendHeaterCommand('on'));
-        this.heaterOffBtn.addEventListener('click', () => this.sendHeaterCommand('off'));
-        this.blowerOnBtn.addEventListener('click', () => this.sendHeaterCommand('blower_on'));
-        this.blowerOffBtn.addEventListener('click', () => this.sendHeaterCommand('blower_off'));
-        this.heaterPrimeBtn.addEventListener('click', () => this.sendHeaterCommand('prime'));
-        this.heaterLevel1Btn.addEventListener('click', () => this.sendHeaterCommand('level1'));
-        this.heaterLevel2Btn.addEventListener('click', () => this.sendHeaterCommand('level2'));
-        this.heaterLevel3Btn.addEventListener('click', () => this.sendHeaterCommand('level3'));
-        this.heaterSetTempBtn.addEventListener('click', () => this.setHeaterTemperature());
-        this.sendCustomHexBtn.addEventListener('click', () => this.sendCustomHexCommand());
+        // Heater control event listeners (with null checks)
+        if (this.heaterOnBtn) {
+            this.heaterOnBtn.addEventListener('click', () => this.sendHeaterCommand('on'));
+        }
+        if (this.heaterOffBtn) {
+            this.heaterOffBtn.addEventListener('click', () => this.sendHeaterCommand('off'));
+        }
+        if (this.requestStatusBtn) {
+            this.requestStatusBtn.addEventListener('click', () => this.sendHeaterCommand('status'));
+        }
+        if (this.blowerOnBtn) {
+            this.blowerOnBtn.addEventListener('click', () => this.sendHeaterCommand('blower_on'));
+        }
+        if (this.blowerOffBtn) {
+            this.blowerOffBtn.addEventListener('click', () => this.sendHeaterCommand('blower_off'));
+        }
+        if (this.heaterPrimeBtn) {
+            this.heaterPrimeBtn.addEventListener('click', () => this.sendHeaterCommand('prime'));
+        }
+        if (this.heaterLevel1Btn) {
+            this.heaterLevel1Btn.addEventListener('click', () => this.sendHeaterCommand('level1'));
+        }
+        if (this.heaterLevel2Btn) {
+            this.heaterLevel2Btn.addEventListener('click', () => this.sendHeaterCommand('level2'));
+        }
+        if (this.heaterLevel3Btn) {
+            this.heaterLevel3Btn.addEventListener('click', () => this.sendHeaterCommand('level3'));
+        }
+        if (this.heaterSetTempBtn) {
+            this.heaterSetTempBtn.addEventListener('click', () => this.setHeaterTemperature());
+        }
+        if (this.sendCustomHexBtn) {
+            this.sendCustomHexBtn.addEventListener('click', () => this.sendCustomHexCommand());
+        }
+        
+        // Protocol learning event listeners (with null checks)
+        if (this.saveLearnedCommandBtn) {
+            this.saveLearnedCommandBtn.addEventListener('click', () => this.saveLearnedCommand());
+        }
+        if (this.testLearnedCommandBtn) {
+            this.testLearnedCommandBtn.addEventListener('click', () => this.testSelectedLearnedCommand());
+        }
+        if (this.clearLearnedCommandsBtn) {
+            this.clearLearnedCommandsBtn.addEventListener('click', () => this.clearLearnedCommands());
+        }
+        
+        // Load learned commands on startup
+        if (this.learnedCommandsList) {
+            this.loadLearnedCommands();
+        }
     }
     
     // Update status badge
@@ -169,6 +227,31 @@ class BluetoothDeviceManager {
         this.connectionConsole.scrollTop = this.connectionConsole.scrollHeight;
     }
     
+    // Log to sniffer console
+    logToSniffer(message, type = 'info') {
+        if (!this.snifferEnabled) return;
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const milliseconds = new Date().getMilliseconds().toString().padStart(3, '0');
+        const colorClass = {
+            'tx': 'text-warning',      // Transmitted data
+            'rx': 'text-success',      // Received data
+            'info': 'text-info',
+            'error': 'text-danger'
+        }[type] || 'text-light';
+        
+        const logEntry = document.createElement('div');
+        logEntry.className = colorClass;
+        logEntry.innerHTML = `[${timestamp}.${milliseconds}] ${message}`;
+        this.snifferConsole.appendChild(logEntry);
+        this.snifferConsole.scrollTop = this.snifferConsole.scrollHeight;
+        
+        // Limit console size
+        while (this.snifferConsole.children.length > 500) {
+            this.snifferConsole.removeChild(this.snifferConsole.firstChild);
+        }
+    }
+    
     // Clear consoles
     clearScanConsole() {
         this.scanConsole.innerHTML = '<div class="text-success">Console cleared.</div>';
@@ -176,6 +259,27 @@ class BluetoothDeviceManager {
     
     clearConnectionConsole() {
         this.connectionConsole.innerHTML = '<div class="text-info">Console cleared.</div>';
+    }
+    
+    // Clear sniffer console
+    clearSniffer() {
+        this.snifferConsole.innerHTML = '<div class="text-success">Sniffer console cleared.</div>';
+    }
+    
+    // Enable sniffer
+    enableSniffer() {
+        this.snifferEnabled = true;
+        this.logToSniffer('🔍 Sniffer ENABLED - Capturing all BLE traffic...', 'info');
+        this.snifferEnableBtn.disabled = true;
+        this.snifferDisableBtn.disabled = false;
+    }
+    
+    // Disable sniffer
+    disableSniffer() {
+        this.snifferEnabled = false;
+        this.logToSniffer('⏸️ Sniffer DISABLED', 'info');
+        this.snifferEnableBtn.disabled = false;
+        this.snifferDisableBtn.disabled = true;
     }
     
     // Copy scan console to clipboard
@@ -876,6 +980,9 @@ class BluetoothDeviceManager {
                                         .map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.')
                                         .join('');
                                     
+                                    // Log to sniffer
+                                    this.logToSniffer(`📥 RX [${characteristic.uuid.substring(0, 8)}...] ${hexString}`, 'rx');
+                                    
                                     this.logToConnectionConsole(`📡 NOTIFY [${characteristic.uuid.substring(0, 8)}]: ${hexString}`, 'primary');
                                     this.logToConnectionConsole(`   DEC: [${decString}]`, 'info');
                                     if (asciiString.replace(/\./g, '').length > 0) {
@@ -1300,118 +1407,86 @@ class BluetoothDeviceManager {
         }
         
         try {
+            // Hcalory protocol: header (24 bytes) + command (2 bytes)
+            const header = new Uint8Array([0x00, 0x02, 0x00, 0x01, 0x00, 0x01, 0x00, 0x0e, 0x04, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
             let commandBytes;
-            let commandVariations = []; // Try multiple protocol variations
             
-            // Hcalory heater command protocols - trying multiple variations
+            // Commands based on hcalory-control Python library
             switch(command) {
                 case 'on':
-                    commandVariations = [
-                        new Uint8Array([0x76, 0x01]),                                    // Simple: header + on
-                        new Uint8Array([0x76, 0x16, 0x01, 0x00]),                       // With length byte
-                        new Uint8Array([0x76, 0x16, 0x01, 0x01, 0x00, 0x00, 0x8E]),    // Full frame with checksum
-                        new Uint8Array([0xAA, 0x01, 0x55]),                             // Alt protocol
-                        new Uint8Array([0x78, 0x78, 0x11, 0x01, 0x0D, 0x0A])           // Another variation
-                    ];
-                    this.logToConnectionConsole('🔥 Sending: Heater ON (trying variations)...', 'primary');
-                    document.getElementById('heaterPowerStatus').textContent = 'ON';
-                    document.getElementById('heaterPowerStatus').className = 'mb-0 text-success';
+                    // start_heat: header + 0x02 0x0f
+                    commandBytes = new Uint8Array([...header, 0x02, 0x0f]);
+                    this.logToConnectionConsole('🔥 Sending: Heater START (start_heat)...', 'primary');
+                    document.getElementById('heaterPowerStatus').textContent = 'STARTING';
+                    document.getElementById('heaterPowerStatus').className = 'mb-0 text-warning';
                     break;
                 case 'off':
-                    commandVariations = [
-                        new Uint8Array([0x76, 0x00]),                                    // Simple: header + off
-                        new Uint8Array([0x76, 0x16, 0x00, 0x00]),                       // With length
-                        new Uint8Array([0x76, 0x16, 0x00, 0x00, 0x00, 0x00, 0x8C]),    // Full frame
-                        new Uint8Array([0xAA, 0x00, 0x55]),                             // Alt protocol
-                        new Uint8Array([0x78, 0x78, 0x11, 0x00, 0x0D, 0x0A])           // Another variation
-                    ];
-                    this.logToConnectionConsole('⭕ Sending: Heater OFF (trying variations)...', 'warning');
-                    document.getElementById('heaterPowerStatus').textContent = 'OFF';
+                    // stop_heat: header + 0x01 0x0e
+                    commandBytes = new Uint8Array([...header, 0x01, 0x0e]);
+                    this.logToConnectionConsole('⭕ Sending: Heater STOP (stop_heat)...', 'warning');
+                    document.getElementById('heaterPowerStatus').textContent = 'STOPPING';
                     document.getElementById('heaterPowerStatus').className = 'mb-0 text-secondary';
                     break;
+                case 'status':
+                    // pump_data: header + 0x00 0x0d - requests full heater status
+                    commandBytes = new Uint8Array([...header, 0x00, 0x0d]);
+                    this.logToConnectionConsole('📊 Sending: Request Status (pump_data)...', 'info');
+                    break;
                 case 'blower_on':
-                    commandVariations = [
-                        new Uint8Array([0x76, 0x02]),                                    // Blower on simple
-                        new Uint8Array([0x76, 0x16, 0x02, 0x01]),                       // Blower on with param
-                        new Uint8Array([0x76, 0x16, 0x00, 0x02, 0x00, 0x00, 0x8E]),    // Fan control
-                        new Uint8Array([0xAA, 0x02, 0x01, 0x55])                        // Alt blower on
-                    ];
-                    this.logToConnectionConsole('💨 Sending: Blower ON...', 'info');
+                    // Note: Blower is controlled by the heater automatically
+                    // This just requests status to see current blower state
+                    commandBytes = new Uint8Array([...header, 0x00, 0x0d]);
+                    this.logToConnectionConsole('📊 Requesting current status...', 'info');
                     break;
                 case 'blower_off':
-                    commandVariations = [
-                        new Uint8Array([0x76, 0x03]),                                    // Blower off simple
-                        new Uint8Array([0x76, 0x16, 0x02, 0x00]),                       // Blower off with param
-                        new Uint8Array([0x76, 0x16, 0x00, 0x00, 0x00, 0x00, 0x8C]),    // Fan stop
-                        new Uint8Array([0xAA, 0x02, 0x00, 0x55])                        // Alt blower off
-                    ];
-                    this.logToConnectionConsole('⭕ Sending: Blower OFF...', 'info');
-                    break;
-                case 'prime':
-                    commandVariations = [
-                        new Uint8Array([0x76, 0x05]),                                    // Prime simple
-                        new Uint8Array([0x76, 0x16, 0x05, 0x00]),                       // Prime with param
-                        new Uint8Array([0xAA, 0x05, 0x55])                              // Alt prime
-                    ];
-                    this.logToConnectionConsole('💧 Sending: Prime Fuel...', 'info');
+                    // Same as blower_on - just request status
+                    commandBytes = new Uint8Array([...header, 0x00, 0x0d]);
+                    this.logToConnectionConsole('📊 Requesting current status...', 'info');
                     break;
                 case 'level1':
-                    commandVariations = [
-                        new Uint8Array([0x76, 0x10, 0x01]),                             // Level 1
-                        new Uint8Array([0x76, 0x16, 0x03, 0x01]),                       // Power level 1
-                        new Uint8Array([0xAA, 0x03, 0x01, 0x55])                        // Alt level 1
-                    ];
-                    this.logToConnectionConsole('🔥 Sending: Heat Level 1 (Low)...', 'primary');
-                    document.getElementById('heaterCurrentLevel').textContent = 'Level 1';
+                    // gear: header + 0x07 0x14 (gear mode)
+                    commandBytes = new Uint8Array([...header, 0x07, 0x14]);
+                    this.logToConnectionConsole('🔥 Sending: Gear Mode...', 'primary');
+                    document.getElementById('heaterCurrentLevel').textContent = 'Gear Mode';
                     break;
                 case 'level2':
-                    commandVariations = [
-                        new Uint8Array([0x76, 0x10, 0x02]),                             // Level 2
-                        new Uint8Array([0x76, 0x16, 0x03, 0x02]),                       // Power level 2
-                        new Uint8Array([0xAA, 0x03, 0x02, 0x55])                        // Alt level 2
-                    ];
-                    this.logToConnectionConsole('🔥 Sending: Heat Level 2 (Medium)...', 'primary');
-                    document.getElementById('heaterCurrentLevel').textContent = 'Level 2';
+                    // up: header + 0x03 0x10
+                    commandBytes = new Uint8Array([...header, 0x03, 0x10]);
+                    this.logToConnectionConsole('🔥 Sending: Level UP...', 'primary');
                     break;
                 case 'level3':
-                    commandVariations = [
-                        new Uint8Array([0x76, 0x10, 0x03]),                             // Level 3
-                        new Uint8Array([0x76, 0x16, 0x03, 0x03]),                       // Power level 3
-                        new Uint8Array([0xAA, 0x03, 0x03, 0x55])                        // Alt level 3
-                    ];
-                    this.logToConnectionConsole('🔥 Sending: Heat Level 3 (High)...', 'primary');
-                    document.getElementById('heaterCurrentLevel').textContent = 'Level 3';
+                    // down: header + 0x04 0x11
+                    commandBytes = new Uint8Array([...header, 0x04, 0x11]);
+                    this.logToConnectionConsole('🔥 Sending: Level DOWN...', 'primary');
                     break;
                 default:
                     this.logToConnectionConsole('❌ Unknown command: ' + command, 'danger');
                     return;
             }
             
-            // Try each command variation with delay
-            let success = false;
-            for (let i = 0; i < commandVariations.length; i++) {
-                commandBytes = commandVariations[i];
-                const hexStr = Array.from(commandBytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                
-                try {
-                    this.logToConnectionConsole(`  Attempt ${i + 1}: Sending ${hexStr}`, 'info');
-                    await this.heaterCharacteristic.writeValue(commandBytes);
-                    this.logToConnectionConsole(`  ✓ Sent successfully`, 'success');
-                    success = true;
-                    
-                    // Small delay between attempts
-                    if (i < commandVariations.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                    }
-                } catch (err) {
-                    this.logToConnectionConsole(`  ✗ Failed: ${err.message}`, 'warning');
-                }
-            }
+            // Send the command
+            const hexStr = Array.from(commandBytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            this.logToConnectionConsole(`  Sending: ${hexStr}`, 'info');
             
-            if (success) {
-                this.logToConnectionConsole(`✓ Command sequence completed`, 'success');
-            } else {
-                this.logToConnectionConsole(`❌ All attempts failed`, 'danger');
+            // Log to sniffer
+            this.logToSniffer(`📤 TX [fff2] ${hexStr}`, 'tx');
+            
+            try {
+                await this.heaterCharacteristic.writeValue(commandBytes);
+                this.logToConnectionConsole(`✓ Command sent successfully`, 'success');
+                this.logToConnectionConsole(`⏳ Waiting for response...`, 'info');
+                
+                // Auto-request status after ON/OFF commands
+                if (command === 'on' || command === 'off') {
+                    this.logToConnectionConsole(`⏱️ Will auto-request status in 3 seconds...`, 'info');
+                    setTimeout(() => {
+                        this.logToConnectionConsole(`📊 Auto-requesting status after ${command.toUpperCase()} command...`, 'info');
+                        this.sendHeaterCommand('status');
+                    }, 3000);
+                }
+            } catch (err) {
+                this.logToConnectionConsole(`❌ Failed: ${err.message}`, 'danger');
+                throw err;
             }
             
         } catch (error) {
@@ -1435,20 +1510,25 @@ class BluetoothDeviceManager {
         }
         
         try {
-            // Temperature set command - adjust protocol as needed
-            const commandBytes = new Uint8Array([0xA0, 0x04, temp, 0x00, 0x00, 0x00, 0x00, 0xA4 + temp]);
+            // Hcalory thermostat command: header + 0x05 0x12
+            const header = new Uint8Array([0x00, 0x02, 0x00, 0x01, 0x00, 0x01, 0x00, 0x0e, 0x04, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+            const commandBytes = new Uint8Array([...header, 0x05, 0x12]);
             
-            this.logToConnectionConsole(`🌡️ Setting temperature to ${temp}°C...`, 'primary');
+            this.logToConnectionConsole(`🌡️ Setting thermostat mode...`, 'primary');
+            
+            const hexStr = Array.from(commandBytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            this.logToSniffer(`📤 TX [fff2] THERMOSTAT: ${hexStr}`, 'tx');
             
             await this.heaterCharacteristic.writeValue(commandBytes);
             
-            const hexStr = Array.from(commandBytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
-            this.logToConnectionConsole(`✓ Temperature set: ${hexStr}`, 'success');
+            this.logToConnectionConsole(`✓ Thermostat mode set`, 'success');
+            this.logToConnectionConsole(`  Note: Temperature adjustment happens automatically`, 'info');
             
             document.getElementById('heaterSetTemp').textContent = `${temp}°C`;
+            document.getElementById('heaterCurrentLevel').textContent = 'Thermostat';
             
         } catch (error) {
-            this.logToConnectionConsole(`❌ Error setting temperature: ${error.message}`, 'danger');
+            this.logToConnectionConsole(`❌ Error setting thermostat: ${error.message}`, 'danger');
             console.error('Temperature set error:', error);
         }
     }
@@ -1481,6 +1561,9 @@ class BluetoothDeviceManager {
             const hexStr = Array.from(commandBytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
             this.logToConnectionConsole(`📤 Sending custom command: ${hexStr}`, 'warning');
             
+            // Log to sniffer
+            this.logToSniffer(`📤 TX [fff2] CUSTOM: ${hexStr}`, 'tx');
+            
             await this.heaterCharacteristic.writeValue(commandBytes);
             
             this.logToConnectionConsole(`✓ Custom command sent successfully`, 'success');
@@ -1494,37 +1577,292 @@ class BluetoothDeviceManager {
     
     // Parse heater status from notification responses
     parseHeaterStatus(bytes) {
-        // Try to identify status patterns
-        if (bytes.length < 2) return;
+        // Check if this is a UART-style frame (76 16 ... format)
+        if (bytes.length === 26 && bytes[0] === 0x76 && bytes[1] === 0x16) {
+            this.logToConnectionConsole(`🔧 UART Frame detected (26 bytes)`, 'info');
+            this.parseUartHeaterFrame(bytes);
+            return;
+        }
         
-        // Common status byte patterns
-        if (bytes[0] === 0x76 && bytes.length >= 3) {
-            // Possible Hcalory response format
-            const cmd = bytes[1];
-            const status = bytes[2];
+        // Hcalory HeaterResponse format (from Python library):
+        // Bytes 0-19: header (20 bytes)
+        // Byte 20: heater_state
+        // Byte 21: heater_mode
+        // Byte 22: heater_setting
+        // Byte 23: mystery
+        // Byte 24: padding
+        // Bytes 25-26: voltage (uint16, little-endian)
+        // Bytes 27-28: glow_plug_voltage (uint16)
+        // Bytes 29-30: glow_plug_current (uint16)
+        // Bytes 31-32: fan_voltage (uint16)
+        // Bytes 33-34: pump_voltage (uint16)
+        // Bytes 35-36: chamber_temp (int16)
+        // Bytes 37-38: external_temp (int16)
+        // Bytes 39-40: heat_exchanger_temp (int16)
+        
+        if (bytes.length < 41) {
+            this.logToConnectionConsole(`  ⚠️ Response too short: ${bytes.length} bytes`, 'warning');
+            return;
+        }
+        
+        try {
+            // Parse heater state (byte 20)
+            const heaterStateMap = {
+                0: 'OFF',
+                65: 'COOLDOWN',
+                67: 'COOLDOWN STARTING',
+                69: 'COOLDOWN RECEIVED',
+                128: 'IGNITION RECEIVED',
+                129: 'IGNITION STARTING',
+                131: 'IGNITING',
+                133: 'RUNNING',
+                135: 'HEATING',
+                255: 'ERROR'
+            };
+            const heaterState = heaterStateMap[bytes[20]] || `UNKNOWN (${bytes[20]})`;
             
-            if (cmd === 0x16) {
-                this.logToConnectionConsole(`  📊 Status byte: ${status} (0x${status.toString(16)})`, 'info');
-                
-                // Try to interpret status
-                if (status === 0x01) {
-                    this.logToConnectionConsole(`  ✓ Heater appears to be ON`, 'success');
-                } else if (status === 0x00) {
-                    this.logToConnectionConsole(`  ⭕ Heater appears to be OFF`, 'warning');
-                }
+            // Parse heater mode (byte 21)
+            const heaterModeMap = {
+                0: 'OFF',
+                1: 'THERMOSTAT',
+                2: 'GEAR',
+                8: 'IGNITION FAILED'
+            };
+            const heaterMode = heaterModeMap[bytes[21]] || `UNKNOWN (${bytes[21]})`;
+            
+            // Parse setting (byte 22)
+            const heaterSetting = bytes[22];
+            
+            // Parse voltages and temperatures (little-endian uint16)
+            const voltage = (bytes[26] << 8 | bytes[25]) / 10.0; // Convert to volts
+            const chamberTemp = (bytes[36] << 8 | bytes[35]); // int16
+            const externalTemp = (bytes[38] << 8 | bytes[37]); // int16
+            const heatExchangerTemp = (bytes[40] << 8 | bytes[39]); // int16
+            
+            // Log parsed status
+            this.logToConnectionConsole(`  📊 HEATER STATUS DECODED:`, 'success');
+            this.logToConnectionConsole(`     State: ${heaterState}`, 'info');
+            this.logToConnectionConsole(`     Mode: ${heaterMode}`, 'info');
+            this.logToConnectionConsole(`     Setting: ${heaterSetting}`, 'info');
+            this.logToConnectionConsole(`     Voltage: ${voltage.toFixed(1)}V`, 'info');
+            this.logToConnectionConsole(`     Chamber Temp: ${chamberTemp}°C`, 'info');
+            this.logToConnectionConsole(`     External Temp: ${externalTemp}°C`, 'info');
+            this.logToConnectionConsole(`     Heat Exchanger: ${heatExchangerTemp}°C`, 'info');
+            
+            // Update UI
+            document.getElementById('heaterPowerStatus').textContent = heaterState;
+            document.getElementById('heaterPowerStatus').className = 
+                heaterState.includes('RUNNING') || heaterState.includes('HEATING') ? 'mb-0 text-success' :
+                heaterState.includes('ERROR') ? 'mb-0 text-danger' :
+                heaterState === 'OFF' ? 'mb-0 text-secondary' : 'mb-0 text-warning';
+            
+            document.getElementById('heaterCurrentLevel').textContent = 
+                heaterMode === 'GEAR' ? `Gear ${heaterSetting}` :
+                heaterMode === 'THERMOSTAT' ? `Thermostat ${heaterSetting}°C` :
+                heaterMode;
+            
+            document.getElementById('heaterCurrentTemp').textContent = `${chamberTemp}°C`;
+            
+        } catch (error) {
+            this.logToConnectionConsole(`  ❌ Error parsing status: ${error.message}`, 'danger');
+            console.error('Status parse error:', error);
+        }
+    }
+    
+    // Parse UART-style heater frame (26 bytes: 76 16 ... 00 16)
+    parseUartHeaterFrame(bytes) {
+        try {
+            // Frame format from ESPHome code:
+            // Bytes 0-1: Start (76 16)
+            // Byte 2: Set temperature
+            // Byte 3: Heater state (0-8)
+            // Byte 4: Error code (0-13)
+            // Byte 5: On/Off status
+            // Bytes 6-7: Pump frequency (uint16, need to find indices)
+            // Bytes 8-9: Fan speed (uint16)
+            // Bytes 10-11: Chamber temp (uint16)
+            // Bytes 24-25: End (00 16)
+            
+            const setTemp = bytes[2];
+            const heaterState = bytes[3];
+            const errorCode = bytes[4];
+            const onOff = bytes[5];
+            
+            // Parse multi-byte values (assuming big-endian based on chamber_temp calculation)
+            const pumpFreq = (bytes[6] * 256 + bytes[7]) * 0.1; // Hz
+            const fanSpeed = bytes[8] * 256 + bytes[9]; // RPM
+            const chamberTemp = bytes[10] * 256 + bytes[11]; // °C
+            
+            // State mapping
+            const stateNames = ['Off', 'Starting', 'Igniting', 'Running', 'Stopping', 'Cool Down', 'Error', 'Idle', 'Standby'];
+            const stateName = stateNames[heaterState] || `Unknown (${heaterState})`;
+            
+            this.logToConnectionConsole(`━━━━━ 🔥 HEATER STATUS (UART) ━━━━━`, 'success');
+            this.logToConnectionConsole(`  Power: ${onOff ? 'ON' : 'OFF'}`, 'info');
+            this.logToConnectionConsole(`  State: ${stateName} (${heaterState})`, 'info');
+            this.logToConnectionConsole(`  Set Temp: ${setTemp}°C`, 'info');
+            this.logToConnectionConsole(`  Chamber Temp: ${chamberTemp}°C`, 'info');
+            this.logToConnectionConsole(`  Fan Speed: ${fanSpeed} RPM`, 'info');
+            this.logToConnectionConsole(`  Pump Freq: ${pumpFreq.toFixed(1)} Hz`, 'info');
+            
+            if (errorCode > 0) {
+                this.logToConnectionConsole(`  ⚠️ Error Code: ${errorCode}`, 'warning');
             }
+            
+            // Update UI
+            document.getElementById('heaterPowerStatus').textContent = stateName;
+            document.getElementById('heaterPowerStatus').className = 
+                heaterState === 3 ? 'mb-0 text-success' : // Running
+                heaterState === 6 ? 'mb-0 text-danger' : // Error
+                heaterState === 0 ? 'mb-0 text-secondary' : // Off
+                'mb-0 text-warning'; // Other states
+            
+            document.getElementById('heaterCurrentLevel').textContent = `Set: ${setTemp}°C`;
+            document.getElementById('heaterCurrentTemp').textContent = `${chamberTemp}°C`;
+            
+        } catch (error) {
+            this.logToConnectionConsole(`  ❌ Error parsing UART frame: ${error.message}`, 'danger');
+            console.error('UART parse error:', error);
+        }
+    }
+    
+    // Protocol Learning Functions
+    saveLearnedCommand() {
+        const name = this.learnCommandName.value.trim();
+        const hex = this.learnCommandHex.value.trim();
+        
+        if (!name || !hex) {
+            alert('Please enter both a command name and hex bytes');
+            return;
         }
         
-        // Look for temperature values (common range 0-50°C)
-        for (let i = 0; i < bytes.length; i++) {
-            if (bytes[i] >= 5 && bytes[i] <= 50) {
-                this.logToConnectionConsole(`  🌡️ Possible temp at byte[${i}]: ${bytes[i]}°C`, 'info');
-            }
+        // Validate hex format
+        const hexPattern = /^([0-9A-Fa-f]{2}\s*)+$/;
+        if (!hexPattern.test(hex)) {
+            alert('Invalid hex format. Use space-separated hex bytes (e.g., A5 01 00)');
+            return;
         }
+        
+        // Get existing learned commands
+        const learnedCommands = JSON.parse(localStorage.getItem('learnedCommands') || '[]');
+        
+        // Add new command
+        learnedCommands.push({
+            id: Date.now(),
+            name: name,
+            hex: hex.toUpperCase(),
+            timestamp: new Date().toISOString()
+        });
+        
+        // Save to localStorage
+        localStorage.setItem('learnedCommands', JSON.stringify(learnedCommands));
+        
+        // Clear inputs
+        this.learnCommandName.value = '';
+        this.learnCommandHex.value = '';
+        
+        // Reload display
+        this.loadLearnedCommands();
+        
+        this.logToConnectionConsole(`✓ Saved learned command: ${name}`, 'success');
+    }
+    
+    loadLearnedCommands() {
+        const learnedCommands = JSON.parse(localStorage.getItem('learnedCommands') || '[]');
+        
+        if (learnedCommands.length === 0) {
+            this.learnedCommandsList.innerHTML = '<small class="text-muted">No commands learned yet. Use the form below to save successful commands.</small>';
+            return;
+        }
+        
+        let html = '<div class="list-group">';
+        learnedCommands.forEach(cmd => {
+            html += `
+                <div class="list-group-item list-group-item-action" onclick="bluetoothApp.selectLearnedCommand(${cmd.id})" style="cursor: pointer;">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${this.escapeHtml(cmd.name)}</h6>
+                        <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); bluetoothApp.deleteLearnedCommand(${cmd.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <p class="mb-1 font-monospace text-primary">${cmd.hex}</p>
+                    <small class="text-muted">Saved: ${new Date(cmd.timestamp).toLocaleString()}</small>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        this.learnedCommandsList.innerHTML = html;
+    }
+    
+    selectLearnedCommand(id) {
+        const learnedCommands = JSON.parse(localStorage.getItem('learnedCommands') || '[]');
+        const cmd = learnedCommands.find(c => c.id === id);
+        
+        if (cmd) {
+            this.selectedLearnedCommand = cmd;
+            // Highlight selected
+            document.querySelectorAll('#learnedCommandsList .list-group-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            this.logToConnectionConsole(`Selected: ${cmd.name} - ${cmd.hex}`, 'info');
+        }
+    }
+    
+    async testSelectedLearnedCommand() {
+        if (!this.selectedLearnedCommand) {
+            alert('Please select a command to test first');
+            return;
+        }
+        
+        if (!this.heaterCharacteristic) {
+            alert('Please connect to a device first');
+            return;
+        }
+        
+        this.logToConnectionConsole(`🧪 Testing learned command: ${this.selectedLearnedCommand.name}`, 'warning');
+        
+        // Set the hex input and send
+        this.customHexInput.value = this.selectedLearnedCommand.hex;
+        await this.sendCustomHexCommand();
+    }
+    
+    deleteLearnedCommand(id) {
+        if (!confirm('Delete this learned command?')) {
+            return;
+        }
+        
+        let learnedCommands = JSON.parse(localStorage.getItem('learnedCommands') || '[]');
+        learnedCommands = learnedCommands.filter(c => c.id !== id);
+        localStorage.setItem('learnedCommands', JSON.stringify(learnedCommands));
+        
+        this.loadLearnedCommands();
+        this.logToConnectionConsole(`✓ Deleted learned command`, 'success');
+    }
+    
+    clearLearnedCommands() {
+        if (!confirm('Clear all learned commands?')) {
+            return;
+        }
+        
+        localStorage.removeItem('learnedCommands');
+        this.selectedLearnedCommand = null;
+        this.loadLearnedCommands();
+        this.logToConnectionConsole(`✓ Cleared all learned commands`, 'success');
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 
 // Initialize the application when DOM is ready
+// Store as global so inline onclick handlers can access it
+let bluetoothApp;
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new BluetoothDeviceManager();
+    bluetoothApp = new BluetoothDeviceManager();
 });

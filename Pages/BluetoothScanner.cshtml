@@ -127,30 +127,30 @@
                                 <button id="heaterOffBtn" class="btn btn-secondary">
                                     <i class="fas fa-power-off"></i> Heater OFF
                                 </button>
-                                <button id="blowerOnBtn" class="btn btn-info">
+                                <button id="requestStatusBtn" class="btn btn-info">
+                                    <i class="fas fa-sync-alt"></i> Request Status
+                                </button>
+                                <button id="blowerOnBtn" class="btn btn-outline-info">
                                     <i class="fas fa-fan"></i> Blower ON
                                 </button>
                                 <button id="blowerOffBtn" class="btn btn-outline-info">
                                     <i class="fas fa-fan"></i> Blower OFF
-                                </button>
-                                <button id="heaterPrimeBtn" class="btn btn-warning">
-                                    <i class="fas fa-droplet"></i> Prime Fuel
                                 </button>
                             </div>
                         </div>
                         
                         <!-- Heater Level / Temperature -->
                         <div class="col-md-6 mb-3">
-                            <h6><i class="fas fa-temperature-high"></i> Heat Level / Temperature</h6>
+                            <h6><i class="fas fa-temperature-high"></i> Heat Control</h6>
                             <div class="btn-group-vertical w-100" role="group">
                                 <button id="heaterLevel1Btn" class="btn btn-outline-danger">
-                                    <i class="fas fa-fire"></i> Level 1 (Low)
+                                    <i class="fas fa-cog"></i> Gear Mode
                                 </button>
                                 <button id="heaterLevel2Btn" class="btn btn-outline-danger">
-                                    <i class="fas fa-fire"></i> Level 2 (Medium)
+                                    <i class="fas fa-arrow-up"></i> Level Up
                                 </button>
                                 <button id="heaterLevel3Btn" class="btn btn-outline-danger">
-                                    <i class="fas fa-fire"></i> Level 3 (High)
+                                    <i class="fas fa-arrow-down"></i> Level Down
                                 </button>
                             </div>
                             <div class="mt-3">
@@ -158,7 +158,7 @@
                                 <div class="input-group">
                                     <input type="number" id="heaterTempInput" class="form-control" min="8" max="35" value="20" placeholder="8-35°C">
                                     <button id="heaterSetTempBtn" class="btn btn-primary">
-                                        <i class="fas fa-check"></i> Set
+                                        <i class="fas fa-thermometer-half"></i> Thermostat
                                     </button>
                                 </div>
                             </div>
@@ -216,13 +216,14 @@
                                     <div class="mt-2">
                                         <small class="text-muted">
                                             <strong>Quick Test Patterns:</strong><br>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='76 16 01 00'">76 16 01 00</button>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='76 16 00 00'">76 16 00 00</button>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='AA 55 01'">AA 55 01</button>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='AA 55 00'">AA 55 00</button>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='78 78 11 01 0D 0A'">78 78 11 01</button>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='01'">01</button>
-                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='00'">00</button>
+                                            <button class="btn btn-sm btn-outline-danger me-1 mt-1" onclick="document.getElementById('customHexInput').value='07 02'">07 02 (Status)</button>
+                                            <button class="btn btn-sm btn-outline-success me-1 mt-1" onclick="document.getElementById('customHexInput').value='07 01'">07 01 (ON?)</button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='07 00'">07 00 (OFF?)</button>
+                                            <button class="btn btn-sm btn-outline-warning me-1 mt-1" onclick="document.getElementById('customHexInput').value='08 00'">08 00</button>
+                                            <button class="btn btn-sm btn-outline-info me-1 mt-1" onclick="document.getElementById('customHexInput').value='03 00'">03 00 (Stop)</button>
+                                            <button class="btn btn-sm btn-outline-primary me-1 mt-1" onclick="document.getElementById('customHexInput').value='03 01'">03 01 (Start)</button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='01 00'">01 00</button>
+                                            <button class="btn btn-sm btn-outline-secondary me-1 mt-1" onclick="document.getElementById('customHexInput').value='01 01'">01 01</button>
                                         </small>
                                     </div>
                                 </div>
@@ -236,6 +237,92 @@
 
     <!-- Console Section -->
     <div class="row">
+        <!-- Bluetooth Sniffer -->
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-satellite-dish"></i> Bluetooth Traffic Sniffer
+                        <div class="float-end">
+                            <button id="snifferEnableBtn" class="btn btn-sm btn-outline-light me-1">
+                                <i class="fas fa-play"></i> Enable
+                            </button>
+                            <button id="snifferDisableBtn" class="btn btn-sm btn-outline-light me-1">
+                                <i class="fas fa-stop"></i> Disable
+                            </button>
+                            <button id="clearSnifferBtn" class="btn btn-sm btn-outline-light">
+                                <i class="fas fa-eraser"></i> Clear
+                            </button>
+                        </div>
+                    </h5>
+                </div>
+                <div class="card-body bg-dark text-light p-0">
+                    <div id="snifferConsole" class="p-3 font-monospace" style="height: 300px; overflow-y: auto; font-size: 0.85rem;">
+                        <div class="text-success">Bluetooth Sniffer ready. Enable to capture all BLE traffic...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Protocol Learning Tool -->
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow-sm border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-brain"></i> Protocol Learning Mode
+                        <small class="ms-2">(Discover Working Commands)</small>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-3">
+                        <strong><i class="fas fa-info-circle"></i> How to use:</strong>
+                        <ol class="mb-0 mt-2">
+                            <li>Enable the Bluetooth Sniffer above</li>
+                            <li>Use your heater's <strong>official app/remote control</strong> while connected here</li>
+                            <li>Watch for commands that trigger responses (look for TX followed by RX)</li>
+                            <li>Save successful command patterns below</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h6>Learned Commands</h6>
+                            <div id="learnedCommandsList" class="border rounded p-3 bg-light" style="min-height: 150px;">
+                                <small class="text-muted">No commands learned yet. Use the form below to save successful commands.</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Command Name</label>
+                            <input type="text" id="learnCommandName" class="form-control" placeholder="e.g. Turn On">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Hex Bytes</label>
+                            <input type="text" id="learnCommandHex" class="form-control font-monospace" placeholder="e.g. A5 01 00">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button id="saveLearnedCommandBtn" class="btn btn-primary w-100">
+                                <i class="fas fa-save"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <button id="testLearnedCommandBtn" class="btn btn-outline-primary btn-sm me-2">
+                                <i class="fas fa-vial"></i> Test Selected
+                            </button>
+                            <button id="clearLearnedCommandsBtn" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-trash"></i> Clear All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Scan Console -->
         <div class="col-lg-6 mb-4">
             <div class="card shadow-sm">
